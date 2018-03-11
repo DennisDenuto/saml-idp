@@ -1,0 +1,37 @@
+memo = "4218b5edda7f70b13263b84838888a77460d23aee01e4c382674916fe36d50d4"
+
+[[projects]]
+  name = "github.com/beevik/etree"
+  packages = ["."]
+  revision = "15a30b44cfd6c5a16a7ddfe271bf146aaf2d3195"
+  version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/crewjam/saml"
+  packages = [".","logger","samlidp","xmlenc"]
+  revision = "6b5dd2d26974f7f5e59132ef5921fab7993794d7"
+  version = "0.2.0"
+
+[[projects]]
+  name = "github.com/jonboulle/clockwork"
+  packages = ["."]
+  revision = "2eee05ed794112d45db504eb05aa693efd2b8b09"
+  version = "v0.1.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/russellhaering/goxmldsig"
+  packages = [".","etreeutils","types"]
+  revision = "a348271703b2f18f06407858abd235ccbfebf33f"
+
+[[projects]]
+  name = "github.com/zenazn/goji"
+  packages = [".","bind","graceful","graceful/listener","web","web/middleware","web/mutil"]
+  revision = "64eb34159fe53473206c2b3e70fe396a639452f2"
+  version = "v1.0"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["bcrypt","blowfish","ripemd160"]
+  revision = "c7dcf104e3a7a1417abc0230cb0d5240d764159d"
