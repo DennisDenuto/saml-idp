@@ -11,6 +11,11 @@ import (
 	"github.com/crewjam/saml/samlidp"
 	"github.com/zenazn/goji"
 	"golang.org/x/crypto/bcrypt"
+	"os"
+	"os/signal"
+	"net"
+	"github.com/DennisDenuto/saml-idp/config"
+	"io/ioutil"
 )
 
 var key = func() crypto.PrivateKey {
@@ -71,14 +76,22 @@ UzreO96WzlBBMtY=
 
 func main() {
 	logr := logger.DefaultLogger
-	baseURLstr := flag.String("idp", "", "The URL to the IDP")
+	configFile := flag.String("c", "", "The Path to the idp config file")
 	flag.Parse()
 
-	baseURL, err := url.Parse(*baseURLstr)
+	configFileContents, err := ioutil.ReadFile(*configFile)
+	if err != nil {
+		panic(err)
+	}
+	idpConfig, err := config.NewConfig(configFileContents)
+	if err != nil {
+		panic(err)
+	}
+
+	baseURL, err := url.Parse(idpConfig.Address)
 	if err != nil {
 		logr.Fatalf("cannot parse base URL: %v", err)
 	}
-
 	idpServer, err := samlidp.New(samlidp.Options{
 		URL:         *baseURL,
 		Key:         key,
@@ -93,11 +106,11 @@ func main() {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("hunter2"), bcrypt.DefaultCost)
 	err = idpServer.Store.Put("/users/alice", samlidp.User{Name: "alice",
 		HashedPassword: hashedPassword,
-		Groups:         []string{"Administrators", "Users"},
-		Email:          "alice@example.com",
-		CommonName:     "Alice Smith",
-		Surname:        "Smith",
-		GivenName:      "Alice",
+		Groups: []string{"Administrators", "Users"},
+		Email: "alice@example.com",
+		CommonName: "Alice Smith",
+		Surname: "Smith",
+		GivenName: "Alice",
 	})
 	if err != nil {
 		logr.Fatalf("%s", err)
@@ -117,5 +130,22 @@ func main() {
 	}
 
 	goji.Handle("/*", idpServer)
-	goji.Serve()
+	l, err := net.Listen("tcp", baseURL.Host)
+	if err != nil {
+		logr.Fatal("Server Error:", err)
+
+	}
+	go func() {
+		goji.ServeListener(l)
+	}()
+
+	logr.Print("Server Listening")
+
+	interruptSignal := make(chan os.Signal, 1)
+	signal.Notify(interruptSignal)
+
+	select {
+	case <-interruptSignal:
+		logr.Print("Stopping Server")
+	}
 }
