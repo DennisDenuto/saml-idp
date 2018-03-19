@@ -19,21 +19,25 @@ var _ = Describe("Main", func() {
 	var session *gexec.Session
 	var serverStartMessage string
 	var idpAddress string
+	var idpCertificate string
+	var idpKey string
 	var idpConfig *config.Config
 
 	BeforeEach(func() {
 		idpAddress = "http://localhost:9090"
+		idpCertificate = string(LocalhostCert)
+		idpKey = string(LocalhostKey)
 		serverStartMessage = "Server Listening"
 	})
 
 	JustBeforeEach(func() {
 		var err error
-
 		idpConfig = &config.Config{
 			Address:     idpAddress,
-			Certificate: "cert",
-			PrivateKey:  "key",
+			Certificate: idpCertificate,
+			PrivateKey:  idpKey,
 		}
+
 		jsonString, err := json.Marshal(idpConfig)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -72,6 +76,30 @@ var _ = Describe("Main", func() {
 		BeforeEach(func() {
 			idpAddress = "httasd://invalidurl"
 			serverStartMessage = "Server Error"
+		})
+
+		It("should fail with an error message", func() {
+			Eventually(session).Should(gexec.Exit())
+			Eventually(session).ShouldNot(gexec.Exit(0))
+		})
+	})
+
+	Context("Given invalid certs", func() {
+		BeforeEach(func() {
+			idpCertificate = "not-a-cert"
+			serverStartMessage = "Cannot validate certificate:"
+		})
+
+		It("should fail with an error message", func() {
+			Eventually(session).Should(gexec.Exit())
+			Eventually(session).ShouldNot(gexec.Exit(0))
+		})
+	})
+
+	Context("Given invalid key", func() {
+		BeforeEach(func() {
+			idpKey = "not-a-key"
+			serverStartMessage = "Cannot validate private key:"
 		})
 
 		It("should fail with an error message", func() {
