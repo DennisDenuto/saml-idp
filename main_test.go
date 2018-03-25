@@ -25,6 +25,8 @@ var _ = Describe("Main", func() {
 	var idpConfig *config.Config
 	var users []samlidp.User
 	var usersTempFile *os.File
+	var idpCertificateFile *os.File
+	var idpPrivateKeyFile *os.File
 
 	BeforeEach(func() {
 		idpAddress = "http://localhost:9090"
@@ -53,14 +55,33 @@ var _ = Describe("Main", func() {
 		if usersTempFile != nil {
 			os.Remove(usersTempFile.Name())
 		}
+
+		if idpCertificateFile != nil {
+			os.Remove(idpCertificateFile.Name())
+		}
+
+		if idpPrivateKeyFile != nil {
+			os.Remove(idpPrivateKeyFile.Name())
+		}
+
 	})
 
 	JustBeforeEach(func() {
 		var err error
+		idpCertificateFile, err = fileutil.TempFile(os.TempDir(), "idp", "test")
+		Expect(err).NotTo(HaveOccurred())
+		_, err = idpCertificateFile.WriteString(idpCertificate)
+		Expect(err).NotTo(HaveOccurred())
+
+		idpPrivateKeyFile, err = fileutil.TempFile(os.TempDir(), "idp", "test")
+		Expect(err).NotTo(HaveOccurred())
+		_, err = idpPrivateKeyFile.WriteString(idpKey)
+		Expect(err).NotTo(HaveOccurred())
+
 		idpConfig = &config.Config{
 			Address:     idpAddress,
-			Certificate: idpCertificate,
-			PrivateKey:  idpKey,
+			Certificate: idpCertificateFile.Name(),
+			PrivateKey:  idpPrivateKeyFile.Name(),
 		}
 
 		jsonString, err := json.Marshal(idpConfig)

@@ -107,16 +107,26 @@ func addUsers(usersFilePath *string, store samlidp.Store) error {
 	return nil
 }
 
-func validateCert(cert string) (*x509.Certificate, error) {
-	b, _ := pem.Decode([]byte(cert))
+func validateCert(certPath string) (*x509.Certificate, error) {
+	certificate, err := ioutil.ReadFile(certPath)
+	if err != nil {
+		return nil, err
+	}
+
+	b, _ := pem.Decode([]byte(certificate))
 	if b == nil {
 		return nil, errors.New("no pem block found")
 	}
 	return x509.ParseCertificate(b.Bytes)
 }
 
-func validateKey(key string) (crypto.PrivateKey, error) {
-	b, _ := pem.Decode([]byte(key))
+func validateKey(keyPath string) (crypto.PrivateKey, error) {
+	privateKey, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		return nil, err
+	}
+
+	b, _ := pem.Decode([]byte(privateKey))
 	if b == nil {
 		return nil, errors.New("no pem block found")
 	}
