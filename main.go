@@ -17,11 +17,13 @@ import (
 	"github.com/DennisDenuto/saml-idp/config"
 	"io/ioutil"
 	"errors"
+	"encoding/json"
 )
 
 func main() {
 	logr := logger.DefaultLogger
 	configFile := flag.String("c", "", "The Path to the idp config file")
+	usersFilePath := flag.String("users", "", "The Path to the users file")
 	flag.Parse()
 
 	configFileContents, err := ioutil.ReadFile(*configFile)
@@ -58,28 +60,7 @@ func main() {
 		logr.Fatalf("%s", err)
 	}
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("hunter2"), bcrypt.DefaultCost)
-	err = idpServer.Store.Put("/users/alice", samlidp.User{Name: "alice",
-		HashedPassword: hashedPassword,
-		Groups: []string{"Administrators", "Users"},
-		Email: "alice@example.com",
-		CommonName: "Alice Smith",
-		Surname: "Smith",
-		GivenName: "Alice",
-	})
-	if err != nil {
-		logr.Fatalf("%s", err)
-	}
-
-	err = idpServer.Store.Put("/users/bob", samlidp.User{
-		Name:           "bob",
-		HashedPassword: hashedPassword,
-		Groups:         []string{"Users"},
-		Email:          "bob@example.com",
-		CommonName:     "Bob Smith",
-		Surname:        "Smith",
-		GivenName:      "Bob",
-	})
+	err = addUsers(usersFilePath, idpServer.Store)
 	if err != nil {
 		logr.Fatalf("%s", err)
 	}
@@ -103,6 +84,27 @@ func main() {
 	case <-interruptSignal:
 		logr.Print("Stopping Server")
 	}
+}
+func addUsers(usersFilePath *string, store samlidp.Store) error {
+	usersFileContent, err := ioutil.ReadFile(*usersFilePath)
+	if err != nil {
+		return err
+	}
+	usersToAdd := &[]samlidp.User{}
+	err = json.Unmarshal(usersFileContent, usersToAdd)
+	if err != nil {
+		return err
+	}
+	for _, user := range *usersToAdd {
+		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(*user.PlaintextPassword), bcrypt.DefaultCost)
+		user.HashedPassword = hashedPassword
+		user.PlaintextPassword = nil
+		err = store.Put("/users/"+user.Name, user)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateCert(cert string) (*x509.Certificate, error) {

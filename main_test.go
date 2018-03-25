@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"github.com/cznic/fileutil"
+	"github.com/crewjam/saml/samlidp"
 )
 
 var _ = Describe("Main", func() {
@@ -22,12 +23,36 @@ var _ = Describe("Main", func() {
 	var idpCertificate string
 	var idpKey string
 	var idpConfig *config.Config
+	var users []samlidp.User
+	var usersTempFile *os.File
 
 	BeforeEach(func() {
 		idpAddress = "http://localhost:9090"
 		idpCertificate = string(LocalhostCert)
 		idpKey = string(LocalhostKey)
 		serverStartMessage = "Server Listening"
+	})
+
+	BeforeEach(func() {
+		var password = "some-password"
+
+		users = []samlidp.User{{
+			"Bob", &password, []byte(""), []string{"group1"}, "bob@email.com", "BOB", "Bobby", "Bobbie",
+		}}
+
+		usersJson, err := json.Marshal(users)
+		Expect(err).NotTo(HaveOccurred())
+
+		usersTempFile, err = fileutil.TempFile(os.TempDir(), "users", "test")
+		Expect(err).NotTo(HaveOccurred())
+		err = ioutil.WriteFile(usersTempFile.Name(), usersJson, os.ModePerm)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		if usersTempFile != nil {
+			os.Remove(usersTempFile.Name())
+		}
 	})
 
 	JustBeforeEach(func() {
@@ -46,7 +71,7 @@ var _ = Describe("Main", func() {
 		err = ioutil.WriteFile(tempFile.Name(), jsonString, os.ModePerm)
 		Expect(err).NotTo(HaveOccurred())
 
-		cmd = exec.Command(pathToServer, "-c", tempFile.Name())
+		cmd = exec.Command(pathToServer, "-c", tempFile.Name(), "-users", usersTempFile.Name())
 
 		session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
@@ -70,6 +95,22 @@ var _ = Describe("Main", func() {
 	It("should stop server gracefully when interrupt signal is given", func() {
 		session := session.Signal(os.Interrupt)
 		Eventually(session).Should(gbytes.Say("Stopping Server"))
+	})
+
+	It("should be loaded with users from users file", func() {
+		request, err := http.NewRequest("GET", "http://localhost:9090/users/Bob", nil)
+		Expect(err).NotTo(HaveOccurred())
+
+		response, err := http.DefaultClient.Do(request)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(response.StatusCode).To(Equal(200))
+
+		bytes, err := ioutil.ReadAll(response.Body)
+		Expect(err).NotTo(HaveOccurred())
+		storedUser := &samlidp.User{}
+		json.Unmarshal(bytes, storedUser)
+		Expect(storedUser.PlaintextPassword).To(BeNil())
+		Expect(storedUser.Email).To(Equal("bob@email.com"))
 	})
 
 	Context("Given invalid listen address", func() {
