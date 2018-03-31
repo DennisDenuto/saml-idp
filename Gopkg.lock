@@ -19,6 +19,24 @@
   version = "0.2.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/cznic/fileutil"
+  packages = ["."]
+  revision = "6a051e75936f623600b67c2b1116b6b6c0ffb936"
+
+[[projects]]
+  branch = "release-branch.go1"
+  name = "github.com/golang/go"
+  packages = ["src/pkg/net/http"]
+  revision = "08b97d4061dd75ceec1d44e4335183cd791c9306"
+
+[[projects]]
+  name = "github.com/golang/protobuf"
+  packages = ["proto"]
+  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/jonboulle/clockwork"
   packages = ["."]
   revision = "2eee05ed794112d45db504eb05aa693efd2b8b09"
@@ -55,6 +73,9 @@
   packages = [
     ".",
     "format",
+    "gbytes",
+    "gexec",
+    "ghttp",
     "internal/assertion",
     "internal/asyncassertion",
     "internal/oraclematcher",
@@ -68,6 +89,12 @@
   ]
   revision = "003f63b7f4cff3fc95357005358af2de0f5fe152"
   version = "v1.3.0"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   branch = "master"
@@ -158,6 +185,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2946c8f816cec47595a1b7b6082009a0322a8efa552c295733d5ba597bf5a5fd"
+  inputs-digest = "84405481ddcafc1beda791e7d8d4504f20104c2c73582c54448f1a89fbc3ec46"
   solver-name = "gps-cdcl"
   solver-version = 1

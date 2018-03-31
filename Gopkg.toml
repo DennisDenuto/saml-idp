@@ -50,3 +50,7 @@
 # source = "https://github.com/myfork/package.git"
 
 
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
