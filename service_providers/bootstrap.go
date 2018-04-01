@@ -10,6 +10,7 @@ import (
 	"github.com/crewjam/saml/logger"
 	"time"
 	"sync"
+	"crypto/tls"
 )
 
 //go:generate counterfeiter . Store
@@ -81,7 +82,11 @@ type SPMetadataConfigurerStore struct {
 }
 
 func (s SPMetadataConfigurerStore) AddSP(metadataURL string) error {
-	client := http.DefaultClient
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
 	parsedUrl, err := url.Parse(metadataURL)
 	if err != nil {
 		return errors.Wrap(err, "AddSP Unable to parse metadata url")
