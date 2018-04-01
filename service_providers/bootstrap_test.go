@@ -9,6 +9,8 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	"fmt"
 	"github.com/crewjam/saml/logger"
+	"time"
+	"net/http"
 )
 
 var _ = Describe("Bootstrap", func() {
@@ -29,6 +31,7 @@ var _ = Describe("Bootstrap", func() {
 			MetadataURLs: []string{
 				fmt.Sprintf("%s/metadata", server.URL()),
 			},
+			Timeout: 3 * time.Second,
 		}
 	})
 
@@ -111,4 +114,85 @@ var _ = Describe("Bootstrap", func() {
 			Expect(store.PutCallCount()).To(Equal(0))
 		})
 	})
+
+	Context("when given sp metadataurl that takes too long", func() {
+		var configurer *service_providersfakes.FakeSPMetadataConfigurer
+
+		BeforeEach(func() {
+			configurer = &service_providersfakes.FakeSPMetadataConfigurer{}
+			configurer.AddSPStub = func(string) error {
+				time.Sleep(10 * time.Minute)
+				return nil
+			}
+
+			bootstrap.Timeout = 1
+			bootstrap.SpMetadataConfigurer = configurer
+		})
+
+		It("should timeout with an error", func() {
+			errChan := make(chan error)
+			Eventually(func() chan error {
+				go func(chan error) {
+					errChan <- bootstrap.Run()
+				}(errChan)
+				return errChan
+			}, 5, 1).Should(Receive(HaveOccurred()))
+		})
+	})
+
+	Context("when given multiple sp metadataurl", func() {
+		BeforeEach(func() {
+			bootstrap.MetadataURLs = []string{
+				fmt.Sprintf("%s/metadata", server.URL()),
+				fmt.Sprintf("%s/metadata", server.URL()),
+			}
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/metadata"),
+					ghttp.RespondWith(200, "<xml></xml>"),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/metadata"),
+					ghttp.RespondWith(200, "<xml></xml>"),
+				),
+			)
+		})
+
+		It("should populate sp store with configured sps", func() {
+			err := bootstrap.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(server.ReceivedRequests()).To(HaveLen(2))
+			Expect(store.PutCallCount()).To(Equal(2))
+			key, value := store.PutArgsForCall(0)
+			Expect(key).To(Equal(fmt.Sprintf("/services/%s", "127.0.0.1")))
+			Expect(value).To(Equal("<xml></xml>"))
+		})
+
+	})
+
+	Context("when second SP metadata fails", func() {
+		BeforeEach(func() {
+			bootstrap.MetadataURLs = []string{
+				fmt.Sprintf("%s/metadata", server.URL()),
+				fmt.Sprintf("%s/metadata_with_err", server.URL()),
+			}
+
+			server.RouteToHandler("GET", "/metadata", func(w http.ResponseWriter, r *http.Request) {
+				w.Write([]byte("<xml></xml>"))
+			})
+
+			server.RouteToHandler("GET", "/metadata_with_err", func(w http.ResponseWriter, r *http.Request) {
+				w.Write([]byte("not valid xml"))
+			})
+		})
+
+		It("should return an error", func() {
+			err := bootstrap.Run()
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("Failed Adding SP after 3 retries: AddSP metatadata response is not xml: EOF"))
+		})
+
+	})
+
 })

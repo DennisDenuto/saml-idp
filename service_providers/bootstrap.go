@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/crewjam/saml/logger"
+	"time"
+	"sync"
 )
 
 //go:generate counterfeiter . Store
@@ -17,20 +19,39 @@ type Store interface {
 
 type SPBootstrap struct {
 	MetadataURLs         []string
+	Timeout              time.Duration
 	SpMetadataConfigurer SPMetadataConfigurer
 	Logger               logger.Interface
 }
 
 func (s SPBootstrap) Run() error {
-
+	var wg = &sync.WaitGroup{}
 	var errChan = make(chan error, len(s.MetadataURLs))
 	for _, metadataUrl := range s.MetadataURLs {
+		wg.Add(1)
 		go func(metadataUrl string) {
-			errChan <- AddSPRetrier(s.Logger, s.SpMetadataConfigurer.AddSP)(metadataUrl)
+			defer wg.Done()
+			err := AddSPRetrier(s.Logger, s.SpMetadataConfigurer.AddSP)(metadataUrl)
+			if err != nil {
+				errChan <- err
+			}
 		}(metadataUrl)
 	}
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
 
-	return <-errChan
+	timeout := time.After(s.Timeout)
+	for {
+		select {
+		case err := <-errChan:
+			return err
+		case <-timeout:
+			return errors.New("timedout waiting for SP metadata")
+		}
+	}
+	return nil
 }
 
 func AddSPRetrier(logger logger.Interface, f AddSPFunc) AddSPFunc {
