@@ -18,6 +18,8 @@ import (
 	"io/ioutil"
 	"errors"
 	"encoding/json"
+	"github.com/DennisDenuto/saml-idp/service_providers"
+	"time"
 )
 
 func main() {
@@ -45,6 +47,21 @@ func main() {
 		logr.Fatal("Cannot validate private key:", err)
 	}
 
+	store := &samlidp.MemoryStore{}
+
+	bootstrap := service_providers.SPBootstrap{
+		MetadataURLs: idpConfig.ServiceProviderMetadataURL,
+		Timeout:      3 * time.Minute,
+		SpMetadataConfigurer: service_providers.SPMetadataConfigurerStore{
+			Store: store,
+		},
+		Logger: logr,
+	}
+	err = bootstrap.Run()
+	if err != nil {
+		logr.Fatal("Cannot bootstrap SPs:", err)
+	}
+
 	baseURL, err := url.Parse(idpConfig.Address)
 	if err != nil {
 		logr.Fatalf("cannot parse base URL: %v", err)
@@ -54,7 +71,7 @@ func main() {
 		Key:         key,
 		Logger:      logr,
 		Certificate: cert,
-		Store:       &samlidp.MemoryStore{},
+		Store:       store,
 	})
 	if err != nil {
 		logr.Fatalf("%s", err)
