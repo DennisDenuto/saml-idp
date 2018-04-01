@@ -1,7 +1,7 @@
 package service_providers
 
 import (
-	"github.com/golang/go/src/pkg/net/http"
+	"net/http"
 	"net/url"
 	"io/ioutil"
 	"encoding/xml"
@@ -87,7 +87,7 @@ func (s SPMetadataConfigurerStore) AddSP(metadataURL string) error {
 		return errors.Wrap(err, "AddSP Unable to parse metadata url")
 	}
 
-	response, err := client.Get(parsedUrl.String())
+	response, err := client.Get(metadataURL)
 	if err != nil {
 		return errors.Wrap(err, "AddSP Unable to get metadata xml")
 	}
