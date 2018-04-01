@@ -49,19 +49,6 @@ func main() {
 
 	store := &samlidp.MemoryStore{}
 
-	bootstrap := service_providers.SPBootstrap{
-		MetadataURLs: idpConfig.ServiceProviderMetadataURL,
-		Timeout:      3 * time.Minute,
-		SpMetadataConfigurer: service_providers.SPMetadataConfigurerStore{
-			Store: store,
-		},
-		Logger: logr,
-	}
-	err = bootstrap.Run()
-	if err != nil {
-		logr.Fatal("Cannot bootstrap SPs:", err)
-	}
-
 	baseURL, err := url.Parse(idpConfig.Address)
 	if err != nil {
 		logr.Fatalf("cannot parse base URL: %v", err)
@@ -93,6 +80,19 @@ func main() {
 	}()
 
 	logr.Print("Server Listening")
+
+	bootstrap := service_providers.SPBootstrap{
+		MetadataURLs: idpConfig.ServiceProviderMetadataURL,
+		Timeout:      3 * time.Minute,
+		SpMetadataConfigurer: service_providers.SPMetadataConfigurerStore{
+			Store: store,
+		},
+		Logger: logr,
+	}
+	err = bootstrap.Run()
+	if err != nil {
+		logr.Fatal("Cannot bootstrap SPs:", err)
+	}
 
 	interruptSignal := make(chan os.Signal, 1)
 	signal.Notify(interruptSignal)
