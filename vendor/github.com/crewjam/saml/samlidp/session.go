@@ -51,6 +51,7 @@ func (s *Server) GetSession(w http.ResponseWriter, r *http.Request, req *saml.Id
 			CreateTime:     saml.TimeNow(),
 			ExpireTime:     saml.TimeNow().Add(sessionMaxAge),
 			Index:          hex.EncodeToString(randomBytes(32)),
+			NameID:         user.Name,
 			UserName:       user.Name,
 			Groups:         user.Groups[:],
 			UserEmail:      user.Email,
