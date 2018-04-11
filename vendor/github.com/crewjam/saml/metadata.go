@@ -3,6 +3,7 @@ package saml
 import (
 	"encoding/xml"
 	"time"
+	"fmt"
 )
 
 // HTTPPostBinding is the official URN for the HTTP-POST binding (transport)
@@ -19,13 +20,21 @@ type EntitiesDescriptor struct {
 	EntityDescriptor []*Metadata `xml:"urn:oasis:names:tc:SAML:2.0:metadata EntityDescriptor"`
 }
 
+type Duration struct {
+	time.Duration
+}
+
+func (d Duration) MarshalText() ([]byte, error) {
+	return []byte(fmt.Sprintf("PT%2.fH", d.Hours())), nil
+}
+
 // Metadata represents the SAML EntityDescriptor object.
 //
 // See http://docs.oasis-open.org/security/saml/v2.0/saml-metadata-2.0-os.pdf section 2.3.2
 type Metadata struct {
 	XMLName          xml.Name          `xml:"urn:oasis:names:tc:SAML:2.0:metadata EntityDescriptor"`
 	ValidUntil       time.Time         `xml:"validUntil,attr"`
-	CacheDuration    time.Duration     `xml:"cacheDuration,attr,omitempty"`
+	CacheDuration    Duration     `xml:"cacheDuration,attr,omitempty"`
 	EntityID         string            `xml:"entityID,attr"`
 	SPSSODescriptor  *SPSSODescriptor  `xml:"SPSSODescriptor"`
 	IDPSSODescriptor *IDPSSODescriptor `xml:"IDPSSODescriptor"`

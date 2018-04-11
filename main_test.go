@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"github.com/cznic/fileutil"
 	"github.com/crewjam/saml/samlidp"
+	"crypto/tls"
 )
 
 var _ = Describe("Main", func() {
@@ -29,7 +30,8 @@ var _ = Describe("Main", func() {
 	var idpPrivateKeyFile *os.File
 
 	BeforeEach(func() {
-		idpAddress = "http://localhost:9090"
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		idpAddress = "https://localhost:9090"
 		idpCertificate = string(LocalhostCert)
 		idpKey = string(LocalhostKey)
 		serverStartMessage = "Server Listening"
@@ -105,12 +107,16 @@ var _ = Describe("Main", func() {
 	})
 
 	It("should start server with correct address", func() {
-		request, err := http.NewRequest("GET", "http://localhost:9090/metadata", nil)
+		request, err := http.NewRequest("GET", "https://localhost:9090/metadata", nil)
 		Expect(err).NotTo(HaveOccurred())
 
 		response, err := http.DefaultClient.Do(request)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(response.StatusCode).To(Equal(200))
+
+		println("hi")
+		bytes, _ := ioutil.ReadAll(response.Body)
+		println(string(bytes))
 	})
 
 	It("should stop server gracefully when interrupt signal is given", func() {
@@ -119,7 +125,7 @@ var _ = Describe("Main", func() {
 	})
 
 	It("should be loaded with users from users file", func() {
-		request, err := http.NewRequest("GET", "http://localhost:9090/users/Bob", nil)
+		request, err := http.NewRequest("GET", "https://localhost:9090/users/Bob", nil)
 		Expect(err).NotTo(HaveOccurred())
 
 		response, err := http.DefaultClient.Do(request)
@@ -137,7 +143,7 @@ var _ = Describe("Main", func() {
 	Context("Given invalid listen address", func() {
 		BeforeEach(func() {
 			idpAddress = "httasd://invalidurl"
-			serverStartMessage = "Server Error"
+			serverStartMessage = "Cannot create tcp listener:listen tcp: address invalidurl: missing port in address"
 		})
 
 		It("should fail with an error message", func() {

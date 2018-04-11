@@ -64,6 +64,8 @@ func AddSPRetrier(logger logger.Interface, f AddSPFunc) AddSPFunc {
 			if err == nil {
 				return nil
 			}
+
+			time.Sleep(20 * time.Second)
 		}
 		return errors.Wrap(err, "Failed Adding SP after 3 retries")
 	})
@@ -82,17 +84,13 @@ type SPMetadataConfigurerStore struct {
 }
 
 func (s SPMetadataConfigurerStore) AddSP(metadataURL string) error {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-
 	parsedUrl, err := url.Parse(metadataURL)
 	if err != nil {
 		return errors.Wrap(err, "AddSP Unable to parse metadata url")
 	}
 
-	response, err := client.Get(metadataURL)
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	response, err := http.Get(parsedUrl.String())
 	if err != nil {
 		return errors.Wrap(err, "AddSP Unable to get metadata xml")
 	}

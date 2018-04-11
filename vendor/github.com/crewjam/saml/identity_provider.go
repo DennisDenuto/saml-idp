@@ -21,7 +21,7 @@ import (
 	"github.com/beevik/etree"
 	"github.com/crewjam/saml/logger"
 	"github.com/crewjam/saml/xmlenc"
-	dsig "github.com/russellhaering/goxmldsig"
+	"github.com/russellhaering/goxmldsig"
 )
 
 // Session represents a user session. It is returned by the
@@ -94,7 +94,7 @@ func (idp *IdentityProvider) Metadata() *Metadata {
 	return &Metadata{
 		EntityID:      idp.MetadataURL.String(),
 		ValidUntil:    TimeNow().Add(DefaultValidDuration),
-		CacheDuration: DefaultValidDuration,
+		CacheDuration: Duration{DefaultValidDuration},
 		IDPSSODescriptor: &IDPSSODescriptor{
 			ProtocolSupportEnumeration: "urn:oasis:names:tc:SAML:2.0:protocol",
 			KeyDescriptor: []KeyDescriptor{
@@ -427,7 +427,7 @@ func (req *IdpAuthnRequest) MakeAssertion(session *Session) error {
 		IssueInstant: TimeNow(),
 		Version:      "2.0",
 		Issuer: &Issuer{
-			Format: "XXX",
+			Format: "urn:oasis:names:tc:SAML:2.0:nameid-format:entity",
 			Value:  req.IDP.Metadata().EntityID,
 		},
 		Subject: &Subject{
@@ -485,6 +485,8 @@ func (req *IdpAuthnRequest) MarshalAssertion() error {
 	keyStore := dsig.TLSCertKeyStore(keyPair)
 
 	signingContext := dsig.NewDefaultSigningContext(keyStore)
+	signingContext.Canonicalizer = dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList("")
+
 	if err := signingContext.SetSignatureMethod(dsig.RSASHA1SignatureMethod); err != nil {
 		return err
 	}
@@ -524,7 +526,7 @@ func (req *IdpAuthnRequest) MarshalAssertion() error {
 
 	{
 		encryptedAssertionEl := etree.NewElement("saml2:EncryptedAssertion")
-		encryptedAssertionEl.CreateAttr("xmlns:saml2", "urn:oasis:names:tc:SAML:2.0:protocol")
+		encryptedAssertionEl.CreateAttr("xmlns:saml2", "urn:oasis:names:tc:SAML:2.0:assertion")
 		encryptedAssertionEl.AddChild(encryptedDataEl)
 		doc := etree.NewDocument()
 		doc.SetRoot(encryptedAssertionEl)
@@ -675,9 +677,7 @@ func (req *IdpAuthnRequest) MakeResponse() error {
 				Value: StatusSuccess,
 			},
 		},
-		EncryptedAssertion: &EncryptedAssertion{
-			EncryptedData: req.AssertionBuffer,
-		},
+		EncryptedAssertion: req.AssertionBuffer,
 	}
 	return nil
 }

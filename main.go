@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"github.com/DennisDenuto/saml-idp/service_providers"
 	"time"
+	"crypto/tls"
+	"log"
 )
 
 func main() {
@@ -70,13 +72,11 @@ func main() {
 	}
 
 	goji.Handle("/*", idpServer)
-	l, err := net.Listen("tcp", baseURL.Host)
-	if err != nil {
-		logr.Fatal("Server Error:", err)
 
-	}
+	tlsListener := createTLSListener(baseURL, logr, idpConfig)
+
 	go func() {
-		goji.ServeListener(l)
+		goji.ServeListener(tlsListener)
 	}()
 
 	logr.Print("Server Listening")
@@ -102,6 +102,26 @@ func main() {
 		logr.Print("Stopping Server")
 	}
 }
+
+func createTLSListener(baseURL *url.URL, logr *log.Logger, idpConfig *config.Config) net.Listener {
+	l, err := net.Listen("tcp", baseURL.Host)
+	if err != nil {
+		logr.Fatal("Cannot create tcp listener:", err)
+
+	}
+	serverCert, err := tls.LoadX509KeyPair(idpConfig.Certificate, idpConfig.PrivateKey)
+	if err != nil {
+		logr.Fatal("Unable to load server cert", err)
+	}
+	tlsListener := tls.NewListener(l, &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+	})
+	if err != nil {
+		logr.Fatal("Cannot create tls listener:", err)
+	}
+	return tlsListener
+}
+
 func addUsers(usersFilePath *string, store samlidp.Store) error {
 	usersFileContent, err := ioutil.ReadFile(*usersFilePath)
 	if err != nil {

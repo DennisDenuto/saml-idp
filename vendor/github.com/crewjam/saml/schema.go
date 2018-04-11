@@ -85,7 +85,7 @@ type Response struct {
 	Version            string    `xml:",attr"`
 	Issuer             *Issuer   `xml:"urn:oasis:names:tc:SAML:2.0:assertion Issuer"`
 	Status             *Status   `xml:"urn:oasis:names:tc:SAML:2.0:protocol Status"`
-	EncryptedAssertion *EncryptedAssertion
+	EncryptedAssertion []byte 	 `xml:",innerxml"`
 	Assertion          *Assertion `xml:"urn:oasis:names:tc:SAML:2.0:assertion Assertion"`
 }
 
@@ -140,8 +140,12 @@ var StatusSuccess = "urn:oasis:names:tc:SAML:2.0:status:Success"
 //
 // See http://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf
 type EncryptedAssertion struct {
-	Assertion     *Assertion
-	EncryptedData []byte `xml:",innerxml"`
+	//Assertion     *Assertion
+	//XMLName       xml.Name `xml:"urn:oasis:names:tc:SAML:2.0:assertion EncryptedAssertion"`
+	//XMLName  xml.Name  `xml:"saml2:EncryptedAssertion"`
+	//XmlNS    string    `xml:"xmlns:saml2,attr"`
+
+	EncryptedData []byte   `xml:",innerxml"`
 }
 
 // Assertion represents the SAML object of the same name.
