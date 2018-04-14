@@ -28,8 +28,8 @@ var _ = Describe("Bootstrap", func() {
 			SpMetadataConfigurer: SPMetadataConfigurerStore{
 				Store: store,
 			},
-			MetadataURLs: []string{
-				fmt.Sprintf("%s/metadata", server.URL()),
+			MetadataURLs: map[string]string{
+				"sp_id": fmt.Sprintf("%s/metadata", server.URL()),
 			},
 			Timeout: 3 * time.Second,
 		}
@@ -56,7 +56,7 @@ var _ = Describe("Bootstrap", func() {
 			Expect(server.ReceivedRequests()).To(HaveLen(1))
 			Expect(store.PutCallCount()).To(Equal(1))
 			key, value := store.PutArgsForCall(0)
-			Expect(key).To(Equal(fmt.Sprintf("/services/%s", "127.0.0.1")))
+			Expect(key).To(Equal(fmt.Sprintf("/services/%s", "sp_id")))
 			Expect(value).To(Equal("<xml></xml>"))
 		})
 
@@ -82,7 +82,7 @@ var _ = Describe("Bootstrap", func() {
 				Expect(server.ReceivedRequests()).To(HaveLen(2))
 				Expect(store.PutCallCount()).To(Equal(1))
 				key, value := store.PutArgsForCall(0)
-				Expect(key).To(Equal(fmt.Sprintf("/services/%s", "127.0.0.1")))
+				Expect(key).To(Equal(fmt.Sprintf("/services/%s", "sp_id")))
 				Expect(value).To(Equal("<xml></xml>"))
 			})
 		})
@@ -120,7 +120,7 @@ var _ = Describe("Bootstrap", func() {
 
 		BeforeEach(func() {
 			configurer = &service_providersfakes.FakeSPMetadataConfigurer{}
-			configurer.AddSPStub = func(string) error {
+			configurer.AddSPStub = func(string, string) error {
 				time.Sleep(10 * time.Minute)
 				return nil
 			}
@@ -142,9 +142,9 @@ var _ = Describe("Bootstrap", func() {
 
 	Context("when given multiple sp metadataurl", func() {
 		BeforeEach(func() {
-			bootstrap.MetadataURLs = []string{
-				fmt.Sprintf("%s/metadata", server.URL()),
-				fmt.Sprintf("%s/metadata", server.URL()),
+			bootstrap.MetadataURLs = map[string]string{
+				"sp_id1": fmt.Sprintf("%s/metadata", server.URL()),
+				"sp_id2": fmt.Sprintf("%s/metadata", server.URL()),
 			}
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
@@ -165,7 +165,11 @@ var _ = Describe("Bootstrap", func() {
 			Expect(server.ReceivedRequests()).To(HaveLen(2))
 			Expect(store.PutCallCount()).To(Equal(2))
 			key, value := store.PutArgsForCall(0)
-			Expect(key).To(Equal(fmt.Sprintf("/services/%s", "127.0.0.1")))
+			Expect(key).To(Equal(fmt.Sprintf("/services/%s", "sp_id1")))
+			Expect(value).To(Equal("<xml></xml>"))
+
+			key, value = store.PutArgsForCall(1)
+			Expect(key).To(Equal(fmt.Sprintf("/services/%s", "sp_id2")))
 			Expect(value).To(Equal("<xml></xml>"))
 		})
 
@@ -173,9 +177,9 @@ var _ = Describe("Bootstrap", func() {
 
 	Context("when second SP metadata fails", func() {
 		BeforeEach(func() {
-			bootstrap.MetadataURLs = []string{
-				fmt.Sprintf("%s/metadata", server.URL()),
-				fmt.Sprintf("%s/metadata_with_err", server.URL()),
+			bootstrap.MetadataURLs = map[string]string{
+				"sp_id1": fmt.Sprintf("%s/metadata", server.URL()),
+				"sp_id2": fmt.Sprintf("%s/metadata_with_err", server.URL()),
 			}
 
 			server.RouteToHandler("GET", "/metadata", func(w http.ResponseWriter, r *http.Request) {

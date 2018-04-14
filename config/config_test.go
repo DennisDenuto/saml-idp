@@ -16,7 +16,11 @@ var _ = Describe("Config", func() {
 		config, err = NewConfig([]byte(`{
 					"address": "http://localhost",
 					"private_key": "abc",
-					"certificate": "def"
+					"certificate": "def",
+					"sp_metadata_urls": {
+						"sp_name": "http://someurl",
+						"sp_name2": "http://someurl2"
+					}
 				}`))
 	})
 
@@ -26,6 +30,8 @@ var _ = Describe("Config", func() {
 		Expect(config.Certificate).To(Equal("def"))
 		Expect(config.Certificate).To(Equal("def"))
 		Expect(config.Address).To(Equal("http://localhost"))
+		Expect(config.ServiceProviderMetadataURLs).To(HaveKeyWithValue("sp_name", "http://someurl"))
+		Expect(config.ServiceProviderMetadataURLs).To(HaveKeyWithValue("sp_name2", "http://someurl2"))
 	})
 
 	Context("when given an invalid json config file", func() {

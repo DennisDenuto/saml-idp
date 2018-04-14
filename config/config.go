@@ -7,10 +7,10 @@ import (
 )
 
 type Config struct {
-	PrivateKey                 string   `json:"private_key" validate:"nonzero"`
-	Certificate                string   `json:"certificate" validate:"nonzero"`
-	Address                    string   `json:"address" validate:"nonzero"`
-	ServiceProviderMetadataURL []string `json:"sp_metadata_urls"`
+	PrivateKey                  string            `json:"private_key" validate:"nonzero"`
+	Certificate                 string            `json:"certificate" validate:"nonzero"`
+	Address                     string            `json:"address" validate:"nonzero"`
+	ServiceProviderMetadataURLs map[string]string `json:"sp_metadata_urls"`
 }
 
 func NewConfig(configContent []byte) (*Config, error) {

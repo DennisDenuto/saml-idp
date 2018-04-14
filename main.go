@@ -82,7 +82,7 @@ func main() {
 	logr.Print("Server Listening")
 
 	bootstrap := service_providers.SPBootstrap{
-		MetadataURLs: idpConfig.ServiceProviderMetadataURL,
+		MetadataURLs: idpConfig.ServiceProviderMetadataURLs,
 		Timeout:      3 * time.Minute,
 		SpMetadataConfigurer: service_providers.SPMetadataConfigurerStore{
 			Store: store,

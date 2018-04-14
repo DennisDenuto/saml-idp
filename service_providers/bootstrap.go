@@ -2,7 +2,6 @@ package service_providers
 
 import (
 	"net/http"
-	"net/url"
 	"io/ioutil"
 	"encoding/xml"
 	"fmt"
@@ -19,7 +18,7 @@ type Store interface {
 }
 
 type SPBootstrap struct {
-	MetadataURLs         []string
+	MetadataURLs         map[string]string
 	Timeout              time.Duration
 	SpMetadataConfigurer SPMetadataConfigurer
 	Logger               logger.Interface
@@ -28,15 +27,15 @@ type SPBootstrap struct {
 func (s SPBootstrap) Run() error {
 	var wg = &sync.WaitGroup{}
 	var errChan = make(chan error, len(s.MetadataURLs))
-	for _, metadataUrl := range s.MetadataURLs {
+	for spName, metadataUrl := range s.MetadataURLs {
 		wg.Add(1)
-		go func(metadataUrl string) {
+		go func(spName string, metadataUrl string) {
 			defer wg.Done()
-			err := AddSPRetrier(s.Logger, s.SpMetadataConfigurer.AddSP)(metadataUrl)
+			err := AddSPRetrier(s.Logger, s.SpMetadataConfigurer.AddSP)(spName, metadataUrl)
 			if err != nil {
 				errChan <- err
 			}
-		}(metadataUrl)
+		}(spName, metadataUrl)
 	}
 	go func() {
 		wg.Wait()
@@ -56,11 +55,11 @@ func (s SPBootstrap) Run() error {
 }
 
 func AddSPRetrier(logger logger.Interface, f AddSPFunc) AddSPFunc {
-	return AddSPFunc(func(url string) error {
+	return AddSPFunc(func(spId string, url string) error {
 		var err error
 		for numRetries := 0; numRetries < 3; numRetries++ {
 			logger.Printf("Trying metatadata url: (%s) call attempt: %d", url, numRetries)
-			err = f(url)
+			err = f(spId, url)
 			if err == nil {
 				return nil
 			}
@@ -72,11 +71,11 @@ func AddSPRetrier(logger logger.Interface, f AddSPFunc) AddSPFunc {
 
 }
 
-type AddSPFunc func(string) error
+type AddSPFunc func(string, string) error
 
 //go:generate counterfeiter . SPMetadataConfigurer
 type SPMetadataConfigurer interface {
-	AddSP(string) error
+	AddSP(string, string) error
 }
 
 type SPMetadataConfigurerStore struct {
@@ -84,13 +83,12 @@ type SPMetadataConfigurerStore struct {
 }
 
 func (s SPMetadataConfigurerStore) AddSP(metadataURL string) error {
-	parsedUrl, err := url.Parse(metadataURL)
-	if err != nil {
-		return errors.Wrap(err, "AddSP Unable to parse metadata url")
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
+	client := &http.Client{Transport: tr}
 
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	response, err := http.Get(parsedUrl.String())
+	response, err := client.Get(metadataURL)
 	if err != nil {
 		return errors.Wrap(err, "AddSP Unable to get metadata xml")
 	}
@@ -108,7 +106,7 @@ func (s SPMetadataConfigurerStore) AddSP(metadataURL string) error {
 	}
 
 	return s.Store.Put(
-		fmt.Sprintf("/services/%s", parsedUrl.Hostname()),
+		fmt.Sprintf("/services/%s", spId),
 		string(spXmlMetadata),
 	)
 }

@@ -8,10 +8,11 @@ import (
 )
 
 type FakeSPMetadataConfigurer struct {
-	AddSPStub        func(string) error
+	AddSPStub        func(string, string) error
 	addSPMutex       sync.RWMutex
 	addSPArgsForCall []struct {
 		arg1 string
+		arg2 string
 	}
 	addSPReturns struct {
 		result1 error
@@ -20,15 +21,16 @@ type FakeSPMetadataConfigurer struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeSPMetadataConfigurer) AddSP(arg1 string) error {
+func (fake *FakeSPMetadataConfigurer) AddSP(arg1 string, arg2 string) error {
 	fake.addSPMutex.Lock()
 	fake.addSPArgsForCall = append(fake.addSPArgsForCall, struct {
 		arg1 string
-	}{arg1})
-	fake.recordInvocation("AddSP", []interface{}{arg1})
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("AddSP", []interface{}{arg1, arg2})
 	fake.addSPMutex.Unlock()
 	if fake.AddSPStub != nil {
-		return fake.AddSPStub(arg1)
+		return fake.AddSPStub(arg1, arg2)
 	} else {
 		return fake.addSPReturns.result1
 	}
@@ -40,10 +42,10 @@ func (fake *FakeSPMetadataConfigurer) AddSPCallCount() int {
 	return len(fake.addSPArgsForCall)
 }
 
-func (fake *FakeSPMetadataConfigurer) AddSPArgsForCall(i int) string {
+func (fake *FakeSPMetadataConfigurer) AddSPArgsForCall(i int) (string, string) {
 	fake.addSPMutex.RLock()
 	defer fake.addSPMutex.RUnlock()
-	return fake.addSPArgsForCall[i].arg1
+	return fake.addSPArgsForCall[i].arg1, fake.addSPArgsForCall[i].arg2
 }
 
 func (fake *FakeSPMetadataConfigurer) AddSPReturns(result1 error) {
