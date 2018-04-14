@@ -21,6 +21,7 @@ type SPBootstrap struct {
 	MetadataURLs         map[string]string
 	Timeout              time.Duration
 	SpMetadataConfigurer SPMetadataConfigurer
+	BackOffDuration      time.Duration
 	Logger               logger.Interface
 }
 
@@ -31,7 +32,9 @@ func (s SPBootstrap) Run() error {
 		wg.Add(1)
 		go func(spName string, metadataUrl string) {
 			defer wg.Done()
-			err := AddSPRetrier(s.Logger, s.SpMetadataConfigurer.AddSP)(spName, metadataUrl)
+			AddSPFunc := s.SpMetadataConfigurer.AddSP
+			backOffFunc := BackOff(s.Logger, s.BackOffDuration, AddSPFunc)
+			err := AddSPRetrier(s.Logger, backOffFunc)(spName, metadataUrl)
 			if err != nil {
 				errChan <- err
 			}
@@ -54,6 +57,18 @@ func (s SPBootstrap) Run() error {
 	return nil
 }
 
+func BackOff(logger logger.Interface, backOffDuration time.Duration, f func(string, string) error) AddSPFunc {
+	return AddSPFunc(func (spID string, url string) error {
+		err := f(spID, url)
+		if err == nil {
+			return nil
+		}
+		logger.Printf("Backing off. Sleeping for %v", backOffDuration)
+		time.Sleep(backOffDuration)
+		return err
+	})
+}
+
 func AddSPRetrier(logger logger.Interface, f AddSPFunc) AddSPFunc {
 	return AddSPFunc(func(spId string, url string) error {
 		var err error
@@ -63,8 +78,6 @@ func AddSPRetrier(logger logger.Interface, f AddSPFunc) AddSPFunc {
 			if err == nil {
 				return nil
 			}
-
-			time.Sleep(20 * time.Second)
 		}
 		return errors.Wrap(err, "Failed Adding SP after 3 retries")
 	})
@@ -82,7 +95,7 @@ type SPMetadataConfigurerStore struct {
 	Store Store
 }
 
-func (s SPMetadataConfigurerStore) AddSP(metadataURL string) error {
+func (s SPMetadataConfigurerStore) AddSP(spId string, metadataURL string) error {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}

@@ -84,6 +84,7 @@ func main() {
 	bootstrap := service_providers.SPBootstrap{
 		MetadataURLs: idpConfig.ServiceProviderMetadataURLs,
 		Timeout:      3 * time.Minute,
+		BackOffDuration: 20 * time.Second,
 		SpMetadataConfigurer: service_providers.SPMetadataConfigurerStore{
 			Store: store,
 		},

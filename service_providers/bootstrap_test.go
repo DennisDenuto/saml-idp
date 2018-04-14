@@ -165,11 +165,11 @@ var _ = Describe("Bootstrap", func() {
 			Expect(server.ReceivedRequests()).To(HaveLen(2))
 			Expect(store.PutCallCount()).To(Equal(2))
 			key, value := store.PutArgsForCall(0)
-			Expect(key).To(Equal(fmt.Sprintf("/services/%s", "sp_id1")))
+			Expect(key).To(SatisfyAny(Equal(fmt.Sprintf("/services/%s", "sp_id1")), Equal(fmt.Sprintf("/services/%s", "sp_id2"))))
 			Expect(value).To(Equal("<xml></xml>"))
 
 			key, value = store.PutArgsForCall(1)
-			Expect(key).To(Equal(fmt.Sprintf("/services/%s", "sp_id2")))
+			Expect(key).To(SatisfyAny(Equal(fmt.Sprintf("/services/%s", "sp_id1")), Equal(fmt.Sprintf("/services/%s", "sp_id2"))))
 			Expect(value).To(Equal("<xml></xml>"))
 		})
 
