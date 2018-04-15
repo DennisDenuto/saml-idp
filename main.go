@@ -66,6 +66,11 @@ func main() {
 		logr.Fatalf("%s", err)
 	}
 
+	idpServer.IDP.ServiceProviderProvider = service_providers.InMemoryServiceProviderProvider{
+		Logger:      logr,
+		Store: store,
+	}
+
 	err = addUsers(usersFilePath, idpServer.Store)
 	if err != nil {
 		logr.Fatalf("%s", err)

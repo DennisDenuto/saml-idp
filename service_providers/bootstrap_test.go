@@ -11,6 +11,9 @@ import (
 	"github.com/crewjam/saml/logger"
 	"time"
 	"net/http"
+	"io/ioutil"
+	"github.com/crewjam/saml/samlidp"
+	"encoding/xml"
 )
 
 var _ = Describe("Bootstrap", func() {
@@ -44,7 +47,7 @@ var _ = Describe("Bootstrap", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/metadata"),
-					ghttp.RespondWith(200, "<xml></xml>"),
+					ghttp.RespondWith(200, SamlSPMetadataContent()),
 				),
 			)
 		})
@@ -57,7 +60,7 @@ var _ = Describe("Bootstrap", func() {
 			Expect(store.PutCallCount()).To(Equal(1))
 			key, value := store.PutArgsForCall(0)
 			Expect(key).To(Equal(fmt.Sprintf("/services/%s", "sp_id")))
-			Expect(value).To(Equal("<xml></xml>"))
+			Expect(SamlSPMetadataToString(value.(*samlidp.Service))).To(Equal(SamlSPMetadataContent()))
 		})
 
 		Context("when sp metadata service is initially unavailable but eventually comes back up", func() {
@@ -70,7 +73,7 @@ var _ = Describe("Bootstrap", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/metadata"),
-						ghttp.RespondWith(200, "<xml></xml>"),
+						ghttp.RespondWith(200, SamlSPMetadataContent()),
 					),
 				)
 			})
@@ -83,7 +86,7 @@ var _ = Describe("Bootstrap", func() {
 				Expect(store.PutCallCount()).To(Equal(1))
 				key, value := store.PutArgsForCall(0)
 				Expect(key).To(Equal(fmt.Sprintf("/services/%s", "sp_id")))
-				Expect(value).To(Equal("<xml></xml>"))
+				Expect(SamlSPMetadataToString(value.(*samlidp.Service))).To(Equal(SamlSPMetadataContent()))
 			})
 		})
 	})
@@ -149,11 +152,11 @@ var _ = Describe("Bootstrap", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/metadata"),
-					ghttp.RespondWith(200, "<xml></xml>"),
+					ghttp.RespondWith(200, SamlSPMetadataContent()),
 				),
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/metadata"),
-					ghttp.RespondWith(200, "<xml></xml>"),
+					ghttp.RespondWith(200, SamlSPMetadataContent()),
 				),
 			)
 		})
@@ -166,11 +169,11 @@ var _ = Describe("Bootstrap", func() {
 			Expect(store.PutCallCount()).To(Equal(2))
 			key, value := store.PutArgsForCall(0)
 			Expect(key).To(SatisfyAny(Equal(fmt.Sprintf("/services/%s", "sp_id1")), Equal(fmt.Sprintf("/services/%s", "sp_id2"))))
-			Expect(value).To(Equal("<xml></xml>"))
+			Expect(SamlSPMetadataToString(value.(*samlidp.Service))).To(Equal(SamlSPMetadataContent()))
 
 			key, value = store.PutArgsForCall(1)
 			Expect(key).To(SatisfyAny(Equal(fmt.Sprintf("/services/%s", "sp_id1")), Equal(fmt.Sprintf("/services/%s", "sp_id2"))))
-			Expect(value).To(Equal("<xml></xml>"))
+			Expect(SamlSPMetadataToString(value.(*samlidp.Service))).To(Equal(SamlSPMetadataContent()))
 		})
 
 	})
@@ -183,7 +186,7 @@ var _ = Describe("Bootstrap", func() {
 			}
 
 			server.RouteToHandler("GET", "/metadata", func(w http.ResponseWriter, r *http.Request) {
-				w.Write([]byte("<xml></xml>"))
+				w.Write([]byte(SamlSPMetadataContent()))
 			})
 
 			server.RouteToHandler("GET", "/metadata_with_err", func(w http.ResponseWriter, r *http.Request) {
@@ -194,9 +197,23 @@ var _ = Describe("Bootstrap", func() {
 		It("should return an error", func() {
 			err := bootstrap.Run()
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError("Failed Adding SP after 3 retries: AddSP metatadata response is not xml: EOF"))
+			Expect(err).To(MatchError("Failed Adding SP after 3 retries: AddSP could not retrieve SP metadata: EOF"))
 		})
 
 	})
 
 })
+
+
+func SamlSPMetadataContent() string {
+	spContent, err := ioutil.ReadFile("fixtures/saml-sp.xml")
+	Expect(err).NotTo(HaveOccurred())
+	return string(spContent)
+}
+
+func SamlSPMetadataToString(value *samlidp.Service) string {
+	savedMetadata := value.Metadata
+	xmlMetadata, err := xml.Marshal(savedMetadata)
+	Expect(err).NotTo(HaveOccurred())
+	return string(xmlMetadata)
+}

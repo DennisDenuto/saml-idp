@@ -2,14 +2,13 @@ package service_providers
 
 import (
 	"net/http"
-	"io/ioutil"
-	"encoding/xml"
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/crewjam/saml/logger"
 	"time"
 	"sync"
 	"crypto/tls"
+	"github.com/crewjam/saml/samlidp"
 )
 
 //go:generate counterfeiter . Store
@@ -58,7 +57,7 @@ func (s SPBootstrap) Run() error {
 }
 
 func BackOff(logger logger.Interface, backOffDuration time.Duration, f func(string, string) error) AddSPFunc {
-	return AddSPFunc(func (spID string, url string) error {
+	return AddSPFunc(func(spID string, url string) error {
 		err := f(spID, url)
 		if err == nil {
 			return nil
@@ -107,19 +106,13 @@ func (s SPMetadataConfigurerStore) AddSP(spId string, metadataURL string) error 
 	}
 	defer response.Body.Close()
 
-	spXmlMetadata, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return errors.Wrap(err, "AddSP Unable to read metadata response")
-	}
+	service := samlidp.Service{}
 
-	var data interface{}
-	err = xml.Unmarshal(spXmlMetadata, &data)
+	metadata, err := GetSPMetadata(response.Body)
 	if err != nil {
-		return errors.Wrap(err, "AddSP metatadata response is not xml")
+		return errors.Wrap(err, "AddSP could not retrieve SP metadata")
 	}
+	service.Metadata = *metadata
 
-	return s.Store.Put(
-		fmt.Sprintf("/services/%s", spId),
-		string(spXmlMetadata),
-	)
+	return s.Store.Put(fmt.Sprintf("/services/%s", spId), &service)
 }
