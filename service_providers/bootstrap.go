@@ -73,7 +73,7 @@ func AddSPRetrier(logger logger.Interface, f AddSPFunc) AddSPFunc {
 	return AddSPFunc(func(spId string, url string) error {
 		var err error
 		for numRetries := 0; numRetries < 3; numRetries++ {
-			logger.Printf("Trying metatadata url: (%s) call attempt: %d", url, numRetries)
+			logger.Printf("Trying %s metatadata url: (%s) call attempt: %d", spId, url, numRetries)
 			err = f(spId, url)
 			if err == nil {
 				return nil
